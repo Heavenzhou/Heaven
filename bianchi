@@ -1,0 +1,80 @@
+clc;
+clear all;
+%%%%%%%%%%%%************Bianchi Model***************%%%%%%%%%%%??
+% For? ? ? ? ?802.11a(重要)? ? ? 802.11b(FH)? ? ?802.11b(DS)? ? 802.11b(IR)? ? ? ? ?
+% Slots time? 9e-6? ? ? ? ?5e-5? ? ? ? ? ? 20e-6? ? ? ? ? 8
+% SIFS? ? ? ? 16e-6? ? ? ? 28e-6? ? ? ? ? ?10e-6? ? ? ? ? 10
+% DIFS? ? ? ? 34e-6? ? ? ? 128e-6? ? ? ? ? 50e-6? ? ? ? ? 26
+% EIFS? ? ? ? 92.6e-6? ? ? 396e-6? ? ? ? ? 364e-6? ? ? ? ?205 or 193
+% PHY rate? ? 6~64*1048576 1~2*1048576? ? ?1~2*1048576? ? 1~2*1048576
+% Wmin? ? ? ? 15? ? ? ? ? ?15? ? ? ? ? ? ? 31? ? ? ? ? ? ?63
+% Wmin? ? ? ? 15? ? ? ? ? ?15? ? ? ? ? ? ? 31? ? ? ? ? ? ?63
+%%%%%%%%%%%%% Assume the parameters are from 802.11a and within basic mechanism%%%%%%%%%%%%
+St=9e-6;
+SIFS=16e-6;
+DIFS=34e-6;
+EIFS=92.6e-6;
+Rphs=64*1048576;
+l=1024*8;%Assume the size of the head and ack/rts/cts can be ignored
+t0=l./Rphs+SIFS+St+DIFS+St;%transmission delay
+t1=l./Rphs+DIFS+St;%collision delay
+t2=St;%a single slot time
+Wmin=32;
+% l=1;t0=1;t1=1;t2=1;x=0:0.01:1;? ??
+% y=@(x)2./(1+32+32*x.*(1+2.*x+4.*x.^2+8.*x.^3+16.*x.^4));? ??
+% for n=1:1:30??
+%? ? ?g=@(x)1-(1-y(x)).^(n-1)-x;? ??
+%? ? ?g0=@(x)g(x)+x;? ??
+%? ? ?g1=@(x)n.*y(x).*(1-y(x)).^(n-1)./g0(x);? ??
+%? ? ?p(n)=fzero(g,0.5);? ??
+%? ? ?s(n)=(l*g0(p(n))*g1(p(n)))./(t0*g0(p(n))*g1(p(n))+t1*g0(p(n))*(1-g1(p(n)))+t2*(1-g0(p(n))));? ??
+% end?
+x=0:0.01:1;
+y1=@(x)2./(1+Wmin+Wmin.*x.*(1+2.*x+4.*x.^2+8.*x.^3));%m=3
+y2=@(x)2./(1+Wmin+Wmin.*x.*(1+2.*x+4.*x.^2+8.*x.^3+16.*x.^4));%m=4
+y3=@(x)2./(1+Wmin+Wmin.*x.*(1+2.*x+4.*x.^2+8.*x.^3+16.*x.^4+32.*x.^5));%m=5
+y4=@(x)2./(1+Wmin+Wmin.*x.*(1+2.*x+4.*x.^2+8.*x.^3+16.*x.^4+32.*x.^5+64.*x.^6));%m=6
+y5=@(x)2./(1+Wmin+Wmin.*x.*(1+2.*x+4.*x.^2+8.*x.^3+16.*x.^4+32.*x.^5+64.*x.^6+128.*x.^7));%m=7
+for n=1:1:50
+  g1=@(x)1-(1-y1(x)).^(n-1)-x;
+  g2=@(x)1-(1-y2(x)).^(n-1)-x;
+  g3=@(x)1-(1-y3(x)).^(n-1)-x;
+  g4=@(x)1-(1-y4(x)).^(n-1)-x;
+  g5=@(x)1-(1-y5(x)).^(n-1)-x;
+  g0_1=@(x)1-(1-y1(x)).^n;
+  g0_2=@(x)1-(1-y1(x)).^n;
+  g0_3=@(x)1-(1-y1(x)).^n;
+  g0_4=@(x)1-(1-y1(x)).^n;
+  g0_5=@(x)1-(1-y1(x)).^n;
+  g1_1=@(x)n.*y1(x).*(1-y1(x)).^(n-1)./g0_1(x);
+  g1_2=@(x)n.*y2(x).*(1-y2(x)).^(n-1)./g0_2(x);
+  g1_3=@(x)n.*y3(x).*(1-y3(x)).^(n-1)./g0_3(x);
+  g1_4=@(x)n.*y4(x).*(1-y4(x)).^(n-1)./g0_4(x);
+  g1_5=@(x)n.*y5(x).*(1-y5(x)).^(n-1)./g0_5(x);
+p1(n)=fzero(g1,0.5);
+p2(n)=fzero(g2,0.5);
+p3(n)=fzero(g3,0.5);
+p4(n)=fzero(g4,0.5);
+p5(n)=fzero(g5,0.5);
+s1(n)=(l*g0_1(p1(n))*g1_1(p1(n)))./(t0*g0_1(p1(n))*g1_1(p1(n))+t1*g0_1(p1(n))*(1-g1_1(p1(n)))+t2*(1-g0_1(p1(n))));
+s2(n)=(l*g0_2(p2(n))*g1_2(p2(n)))./(t0*g0_2(p2(n))*g1_2(p2(n))+t1*g0_2(p2(n))*(1-g1_2(p2(n)))+t2*(1-g0_2(p2(n))));
+s3(n)=(l*g0_3(p3(n))*g1_3(p3(n)))./(t0*g0_3(p3(n))*g1_3(p3(n))+t1*g0_3(p3(n))*(1-g1_3(p3(n)))+t2*(1-g0_3(p3(n))));
+s4(n)=(l*g0_4(p4(n))*g1_4(p4(n)))./(t0*g0_4(p4(n))*g1_4(p4(n))+t1*g0_4(p4(n))*(1-g1_4(p4(n)))+t2*(1-g0_4(p4(n))));
+s5(n)=(l*g0_5(p5(n))*g1_5(p5(n)))./(t0*g0_5(p5(n))*g1_5(p5(n))+t1*g0_5(p5(n))*(1-g1_5(p5(n)))+t2*(1-g0_5(p5(n))));
+end
+subplot(2,1,1);
+plot(p1,'ks-');axis([0 55 -0.05 0.6]);hold on;
+plot(p2,'bx-');axis([0 55 -0.05 0.6]);hold on;
+plot(p3,'go-');axis([0 55 -0.05 0.6]);hold on;
+plot(p4,'c+-');axis([0 55 -0.05 0.6]);hold on;
+plot(p5,'m>-');axis([0 55 -0.05 0.6]);
+title('The collision probability with n increasing'); xlabel('The number of stations');ylabel('The collision probability'); legend('m=3','m=4','m=5','m=6','m=7');
+grid on;
+subplot(2,1,2);
+plot(s1,'ks-');axis([0 55 2.7*1e7 5*1e7]);hold on;
+plot(s2,'bx-');axis([0 55 2.7*1e7 5*1e7]);hold on;
+plot(s3,'go-');axis([0 55 2.7*1e7 5*1e7]);hold on;
+plot(s4,'c+-');axis([0 55 2.7*1e7 5*1e7]);hold on;
+plot(s5,'m>-');axis([0 55 2.7*1e7 5*1e7]);
+title('The throughput with n increasing');  xlabel('The number of stations');ylabel('The throughput'); legend('m=3','m=4','m=5','m=6','m=7'); 
+grid on;
