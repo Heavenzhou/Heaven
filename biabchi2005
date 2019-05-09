@@ -1,0 +1,265 @@
+#ifndef _BIANCHI_H
+#define _BIANCHI_H
+
+#include "IEEE802_11.h"
+
+#define R_n 6
+//#define R_ap 6
+
+#define NO_DIF 1e-9
+
+#if defined IEEE802_11b 
+double E_n[R_n+1] = {30*0.5, 63*0.5, 127*0.5, 255*0.5, 511*0.5, 1023*0.5, 1023*0.5};
+
+#elif defined IEEE802_11g 
+double E_n[R_n+1] = {14*0.5, 31*0.5, 63*0.5, 127*0.5, 255*0.5, 512*0.5, 1023*0.5};
+
+#elif defined IEEE802_11a
+double E_n[R_n+1] = {14*0.5, 31*0.5, 63*0.5, 127*0.5, 255*0.5, 511*0.5, 1023*0.5};
+
+#endif
+
+
+#endif  //#ifndef _BIANCHI_H
+
+#ifndef _DEFINE_H
+#define _DEFINE_H
+
+#define NODE_MAX 20
+
+#endif
+
+/*****************************************/
+/*      define 802.11 parameters         */
+/****************************************/
+#ifndef _802_11_h
+#define _802_11_h
+
+/* select one */
+//#define IEEE802_11g
+#define IEEE802_11b
+//#define IEEE802_11a
+
+
+#define PAYLOAD_BYTE 1500.0
+#define PAYLOAD_BIT (1500.0*8.0)
+
+#if defined IEEE802_11b
+
+#define CWmin 31
+#define CWmax 1023
+#define RATE 11.0 //Mbps
+#define DIFS 50.0 //micro sec
+#define SIFS 10.0 //
+#define SLOT 20.0
+#define HEADERS (144.0 + 48.0)
+#define DATA_SIZE (24.0 + 8.0 + PAYLOAD_BYTE + 4.0)*8.0  //bit
+#define ACK_SIZE 14.0 * 8.0 //bit
+
+#elif defined IEEE802_11a
+
+#define CWmin 15
+#define CWmax 1023
+#define RATE 54.0 //Mbps
+#define DIFS 34.0 //micro sec
+#define SIFS 16.0 //
+#define SLOT 9.0 //
+#define HEADERS (16.0 + 4.0)
+#define DATA_SIZE (16.0 + 24*8.0 + 8.0*8.0 + PAYLOAD_BIT + 4.0*8.0 +6.0)  //bit
+#define ACK_SIZE  (16.0 + 14*8.0 + 6.0)//bit
+
+#elif defined IEEE802_11g
+
+#define CWmin 15
+#define CWmax 1023
+#define RATE 54.0 //Mbps
+#define DIFS 50.0 //micro sec
+#define SIFS 10.0 //
+#define SLOT 20.0 //
+#define HEADERS (16.0 + 4.0)
+#define DATA_SIZE (16.0 + 24*8.0 + 8.0*8.0 + PAYLOAD_BIT + 4.0*8.0 +6.0)  //bit
+#define ACK_SIZE  (16.0 + 14*8.0 + 6.0)//bit
+
+#endif
+
+#define I_TIME SLOT //micro sec
+#define S_TIME  (HEADERS + DATA_SIZE/RATE + SIFS + HEADERS + ACK_SIZE/RATE + DIFS) //micro sec
+#define C_TIME  (HEADERS + DATA_SIZE/RATE + DIFS) //micro sec
+
+#endif
+
+
+
+
+
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#include "IEEE802_11.h"
+#include "define.h"
+
+/**************************************/
+/**************************************/
+int main(int argc, char *argv[]){
+
+  int node_n;
+  double tau_n, p_n;
+  extern double bianchi_tau_n(int);
+
+  for( node_n = 1; node_n <= NODE_MAX; node_n++){
+
+    /* tau_n */
+    tau_n = bianchi_tau_n(node_n);
+
+    /* tau_n -> p_n */
+    p_n = 1 - pow( 1-tau_n, (double)(node_n-1));
+    
+    print_result(node_n, p_n, tau_n);
+  }
+
+  return 0;
+}
+
+CC = cc
+CFLAGS = -Wall
+
+prog = a.out
+
+objs = main.o\
+       bianchi.o\
+       result.o
+
+$(prog):$(objs)
+	$(CC) -o $(prog) $(objs) -lm
+
+
+main.o: IEEE802_11.h define.h
+bianchi.o: define.h bianchi.h
+result.o: IEEE802_11.h define.h
+
+
+clean:
+	rm -f $(prog) $(objs)
+
+
+
+
+
+#include <stdio.h>
+#include <math.h>
+
+#include "define.h"
+#include "IEEE802_11.h"
+
+
+void print_result(int n, double p_n, double tau_n){
+
+  double th_n1;
+  double Pi,Ps_n1,Pc;
+
+  double Bo_n;
+  double mod_S_TIME_n, mod_C_TIME, total_TIME;
+
+  /* for throughput */
+  Pi = pow(1-tau_n, (double)n);
+  Ps_n1 = tau_n * pow(1-tau_n, (double)(n-1));
+  Pc = 1 - Ps_n1 * n;
+
+  Bo_n = 1.0/(CWmin+1);
+  mod_S_TIME_n = S_TIME/(1-Bo_n) + I_TIME;
+  mod_C_TIME = C_TIME + I_TIME;
+
+  total_TIME = I_TIME*Pi + mod_S_TIME_n * Ps_n1 * n + mod_C_TIME * Pc;
+
+  th_n1 = (Ps_n1 * DATA_SIZE/RATE)/total_TIME;
+
+  printf("%d\t%f\n",n, p_n);
+
+  return;
+}
+
+
+
+
+
+
+
+/**************************************************************/
+/*---    calculate propabilities beased on Bianchi 2005    ---*/
+/**************************************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#include "define.h"
+#include "bianchi.h"
+
+/**/
+double sigma_pE(double p, double *E){
+
+  int i;
+  double pi=1.0;
+  double sum=0.0;
+
+  for(i=0; i<=R_n; i++){
+    sum += pi * E[i];
+    pi *= p;
+  }
+
+  return sum;
+}
+
+/**/
+double func_tau_n(double tau_n, int n){
+
+  double p_n;
+
+  /* tau_n -> p_n */
+  p_n = 1 - pow(1-tau_n, (double)(n-1));
+
+  /* p_n -> tau_n , return tau_n - tau_n */
+   return 1.0 / ( 1 + (1 - p_n)/( 1 - pow(p_n, R_n+1.0)) * sigma_pE(p_n, E_n)) - tau_n;
+
+
+}
+
+/********/
+/* main */
+/********/
+double bianchi_tau_n(int n){
+
+  double left_x = 1e-6, right_x = 1.0 - 1e-6, center_x;
+  double left_y, right_y, center_y;
+
+  do{
+    left_y = func_tau_n(left_x, n);
+    right_y = func_tau_n(right_x, n);
+
+    if(left_y * right_y > 0){
+      printf("left_x=%e,right_x=%e\n",left_x,right_x);
+      printf("left_y=%e,right_y=%e\n",left_y,right_y);
+      fprintf(stderr, "left_right error! %s:%d \n",__FILE__,__LINE__);
+      exit(1);
+    }
+    
+    center_x = 0.5 * (right_x + left_x);
+    center_y = func_tau_n(center_x,n);
+    
+    if(left_y * center_y > 0){
+      left_x = center_x;
+      left_y = center_y;
+    }
+    
+    else{
+      right_x = center_x;
+      right_y = center_y;
+    }
+    
+  }while(right_x - left_x > NO_DIF);
+  
+  return 0.5 * (right_x + left_x);
+}
